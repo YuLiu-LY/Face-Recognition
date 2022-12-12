@@ -27,13 +27,8 @@ class FaceMethod(pl.LightningModule):
 
     def training_step(self, batch, batch_idx):
         batch_img = batch['image']
-        loss_dict = self.model.forward(batch_img)['loss']
-        loss = 0
-        logs = {}
-        for k, v in loss_dict.items():
-            self.log_dict({k: v})
-            loss += v
-            logs[k] = v.item()
+        loss = self.model.loss(batch_img)
+        logs = {'loss': loss}
         self.log_dict(logs, sync_dist=True)
         return {'loss': loss}
 
@@ -47,11 +42,11 @@ class FaceMethod(pl.LightningModule):
         if self.args.gpus > 0:
             batch_img = batch_img.to(self.device)
 
-        out = self.model.forward(batch_img)
-
-        B, C, H, W = batch_img.shape
+        pred, _ = self.model.predict(batch_img) * batch_img[:, 0:1]
+        out = torch.cat([batch_img, pred], dim=1)
+        B, _, C, H, W = batch_img.shape
         images = vutils.make_grid(
-            out.reshape(out.shape[0] * out.shape[1], C, H, W), normalize=False, nrow=out.shape[1],
+            out.reshape(-1, C, H, W), normalize=False, nrow=2,
             padding=3, pad_value=0,
         )
 
@@ -63,12 +58,16 @@ class FaceMethod(pl.LightningModule):
             self.empty_cache = False
 
         batch_img = batch['image']
-        out = self.model.forward(batch_img)
-        loss_dict = out['loss']
-        output = {}
-        for k, v in loss_dict.items():
-            self.log_dict({k: v})
-            output[k] = v
+        label = batch['label'] # [B]
+        pred, dist = self.model.predict(batch_img)
+        loss = - dist.mean()
+        acc = (pred == label).float().mean()
+
+        output = {
+            'loss': loss,
+            'acc': acc,
+        }
+       
         return output
 
     def validation_epoch_end(self, outputs):
@@ -87,12 +86,13 @@ class FaceMethod(pl.LightningModule):
             self.empty_cache = False
 
         batch_img = batch['image']
-        out = self.model.forward(batch_img)
-        loss_dict = out['loss']
-        output = {}
-        for k, v in loss_dict.items():
-            self.log_dict({k: v})
-            output[k] = v
+        pred, dist = self.model.predict(batch_img)
+        loss = - dist.mean()
+        
+        output = {
+            'loss': loss,
+        }
+       
         return output
 
     def test_epoch_end(self, outputs):
@@ -107,32 +107,18 @@ class FaceMethod(pl.LightningModule):
 
 
     def configure_optimizers(self):
-        params = [
-        {'params': (x[1] for x in self.model.named_parameters() if 'dvae' in x[0]), 'lr': self.args.lr_dvae},
-        {'params': (x[1] for x in self.model.named_parameters() if 'dvae' not in x[0]), 'lr': self.args.lr_main},
-        ]
-        optimizer = optim.Adam(params)
+        params = self.model.parameters()
+        optimizer = optim.SGD(params, lr=self.args.lr, momentum=0.9, weight_decay=1e-4)
         
-        warmup_steps = self.args.warmup_steps
-        decay_steps = self.args.decay_steps
-
-        def lr_scheduler_dave(step: int):
-            factor = 0.5 ** (step / decay_steps)
+        def lr_scheduler_main(epoch: int):
+            factor = 0.5 * (1. + math.cos(math.pi * epoch / self.args.max_epochs))
             return factor
 
-        def lr_scheduler_main(step: int):
-            if step < warmup_steps:
-                factor = step / warmup_steps
-            else:
-                factor = 1
-            factor *= 0.5 ** (step / decay_steps)
-            return factor
-
-        scheduler = optim.lr_scheduler.LambdaLR(optimizer=optimizer, lr_lambda=[lr_scheduler_dave, lr_scheduler_main])
+        scheduler = optim.lr_scheduler.LambdaLR(optimizer=optimizer, lr_lambda=[lr_scheduler_main])
 
         return (
             [optimizer],
-            [{"scheduler": scheduler, "interval": "step",}],
+            [{"scheduler": scheduler, "interval": "epoch",}],
         )
 
     def cosine_anneal(self, step, final_step, start_step=0, start_value=1.0, final_value=0.1):
@@ -150,3 +136,5 @@ class FaceMethod(pl.LightningModule):
             progress = (step - start_step) / (final_step - start_step)
             value = a * math.cos(math.pi * progress) + b
         return value
+
+    

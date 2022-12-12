@@ -33,27 +33,45 @@ class FaceDataset(Dataset):
         ])
         
     def __getitem__(self, index: int):
+        out = {}
         img_paths = self.img_files[index]
-        if len(img_paths) < 2:
-            img1 = Image.open(img_paths[0]).convert("RGB")
-            img_pair= [self.T1(img1), self.T2(img1)]
+        if self.split ==  'train':
+            if len(img_paths) < 2:
+                img1 = Image.open(img_paths[0]).convert("RGB")
+                img_pair= [self.T1(img1), self.T2(img1)]
+            else:
+                random.shuffle(img_paths)
+                img1 = Image.open(img_paths[0]).convert("RGB")
+                img2 = Image.open(img_paths[1]).convert("RGB")
+                img_pair = [self.T1(img1), self.T1(img2)]
         else:
-            random.shuffle(img_paths)
             img1 = Image.open(img_paths[0]).convert("RGB")
             img2 = Image.open(img_paths[1]).convert("RGB")
             img_pair = [self.T1(img1), self.T1(img2)]
+            if self.split == 'val':
+                label = self.labels[index]
+                out['label'] = torch.tensor(label).int()
         img_pair = torch.stack(img_pair, dim=0)
-        return {'image': img_pair}
-
+        out['image'] = img_pair
+        return out
 
     def __len__(self):
         return len(self.img_files)
     
     def get_files(self):
         with open(f'{self.data_root}/{self.split}.txt', 'r') as f:
-            img_dirs = f.read().splitlines()
-        self.img_files = [sorted(glob(f'{dir}/*_a.jpg')) for dir in img_dirs]
-              
+            lines = f.read().splitlines()
+            if self.split == 'train':
+                img_dirs = lines
+                self.img_files = [sorted(glob(f'{dir}/*_a.jpg')) for dir in img_dirs]
+            elif self.split == 'val':
+                pairs = [line.split(',') for line in lines]
+                self.img_files = [[pair[0], pair[1]] for pair in pairs]
+                self.labels = [int(pair[2]) for pair in pairs]
+            else:
+                pairs = [line.split(',') for line in lines]
+                self.img_files = [[pair[0], pair[1]] for pair in pairs]
+
 
 class FaceDataModule(pl.LightningDataModule):
     def __init__(
@@ -101,14 +119,15 @@ if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser()
     args = parser.parse_args()
-    args.data_root = '/Users/liuyu/Downloads/Face'
+    args.data_root = '/home/yuliu/Dataset/Face'
     args.use_rescale = False
     args.batch_size = 20
-    args.num_workers = 4
+    args.num_workers = 0
 
     datamodule = FaceDataModule(args)
     dl = datamodule.val_dataloader()
     it = iter(dl)
     batch = next(it)
     print(batch['image'].shape)
+    print(batch['label'])
     
