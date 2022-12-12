@@ -112,6 +112,7 @@ def generate_data_set():
     # generate pairs of same face and different face
     pair_list = []
     label_list = []
+    N_pos = 0
     for i in idx:
         img_paths = img_paths_list[i]
         if len(img_paths) == 0:
@@ -120,12 +121,14 @@ def generate_data_set():
         if len(img_paths) >= 2:
             pair_list.append(random.sample(img_paths, 2))
             label_list.append(1)
+            N_pos += 1
         else:
             path1 = img_paths[0]
             img_paths2 = img_paths_list[random.choice(idx)]
             path2 = random.choice(img_paths2)
             pair_list.append([path1, path2])
             label_list.append(0)
+    print(f'N_pos: {N_pos}')
     with open(f'{DATA_ROOT}/val.txt', 'w') as f:
         for pair, label in zip(pair_list, label_list):
             f.write(f'{pair[0]},{pair[1]},{label}\n')

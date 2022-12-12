@@ -16,7 +16,7 @@ import argparse
 from dataset import FaceDataModule
 from model import FaceModel
 from method import FaceMethod
-from utils import set_random_seed, state_dict_ckpt
+from utils import set_random_seed, state_dict_ckpt, ImageLogCallback
 
 
 parser = argparse.ArgumentParser()
@@ -40,9 +40,9 @@ parser.add_argument('--grad_clip', type=float, default=0)
 parser.add_argument('--is_logger_enabled', default=False, action='store_true')
 parser.add_argument('--load_from_ckpt', default=False, action='store_true')
 
-parser.add_argument('--lr', type=float, default=0.05)
-parser.add_argument('--warmup_steps', type=int, default=10000)
-parser.add_argument('--decay_steps', type=int, default=50000)
+parser.add_argument('--lr', type=float, default=0.005)
+parser.add_argument('--warmup_epochs', type=int, default=100)
+parser.add_argument('--decay_epochs', type=int, default=500)
 parser.add_argument('--max_epochs', type=int, default=1000)
 
 parser.add_argument('--projection_dim', type=int, default=512)
@@ -55,7 +55,7 @@ def main(args):
     print(args)
     set_random_seed(args.seed)
     # set device
-    os.environ["CUDA_VISIBLE_DEVICES"] = "1, 4"
+    os.environ["CUDA_VISIBLE_DEVICES"] = "1, 5"
 
     datamodule = FaceDataModule(args)
     model = FaceModel(args)
@@ -72,7 +72,7 @@ def main(args):
         log_dir = os.path.join(args.log_path, args.log_name)
         print(log_dir)
         logger.experiment.add_text('hparams', arg_str)
-        callbacks = [LearningRateMonitor("step"), ModelCheckpoint(monitor=args.monitor, save_top_k=1, save_last=True, mode='max')]
+        callbacks = [LearningRateMonitor("step"), ImageLogCallback(), ModelCheckpoint(monitor=args.monitor, save_top_k=1, save_last=True, mode='max')]
     else:
         logger = False
         callbacks = []
@@ -94,7 +94,6 @@ def main(args):
 
 if __name__ == "__main__":
     args = parser.parse_args()
-    args.lr = args.lr * args.batch_size / 256
     if args.gpus > 1:
         args.batch_size = args.batch_size // args.gpus
     main(args)

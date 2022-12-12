@@ -42,7 +42,8 @@ class FaceMethod(pl.LightningModule):
         if self.args.gpus > 0:
             batch_img = batch_img.to(self.device)
 
-        pred, _ = self.model.predict(batch_img) * batch_img[:, 0:1]
+        pred, _ = self.model.predict(batch_img)
+        pred = pred.reshape(-1, 1, 1, 1, 1).expand(-1, 1, 3, 128, 128)
         out = torch.cat([batch_img, pred], dim=1)
         B, _, C, H, W = batch_img.shape
         images = vutils.make_grid(
@@ -59,8 +60,7 @@ class FaceMethod(pl.LightningModule):
 
         batch_img = batch['image']
         label = batch['label'] # [B]
-        pred, dist = self.model.predict(batch_img)
-        loss = - dist.mean()
+        pred, loss = self.model.predict(batch_img)
         acc = (pred == label).float().mean()
 
         output = {
@@ -86,8 +86,7 @@ class FaceMethod(pl.LightningModule):
             self.empty_cache = False
 
         batch_img = batch['image']
-        pred, dist = self.model.predict(batch_img)
-        loss = - dist.mean()
+        pred, loss = self.model.predict(batch_img)
         
         output = {
             'loss': loss,
@@ -108,10 +107,14 @@ class FaceMethod(pl.LightningModule):
 
     def configure_optimizers(self):
         params = self.model.parameters()
-        optimizer = optim.SGD(params, lr=self.args.lr, momentum=0.9, weight_decay=1e-4)
+        optimizer = optim.AdamW(params, lr=self.args.lr, weight_decay=1e-4)
         
         def lr_scheduler_main(epoch: int):
-            factor = 0.5 * (1. + math.cos(math.pi * epoch / self.args.max_epochs))
+            if epoch < self.args.warmup_epochs:
+                factor = epoch / self.args.warmup_epochs
+            else:
+                factor = 1
+            factor *= 0.5 ** (epoch // self.args.decay_epochs)
             return factor
 
         scheduler = optim.lr_scheduler.LambdaLR(optimizer=optimizer, lr_lambda=[lr_scheduler_main])
@@ -120,21 +123,5 @@ class FaceMethod(pl.LightningModule):
             [optimizer],
             [{"scheduler": scheduler, "interval": "epoch",}],
         )
-
-    def cosine_anneal(self, step, final_step, start_step=0, start_value=1.0, final_value=0.1):
-    
-        assert start_value >= final_value
-        assert start_step <= final_step
-        
-        if step < start_step:
-            value = start_value
-        elif step >= final_step:
-            value = final_value
-        else:
-            a = 0.5 * (start_value - final_value)
-            b = 0.5 * (start_value + final_value)
-            progress = (step - start_step) / (final_step - start_step)
-            value = a * math.cos(math.pi * progress) + b
-        return value
 
     
