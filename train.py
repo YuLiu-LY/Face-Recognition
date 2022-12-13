@@ -1,6 +1,7 @@
 import pytorch_lightning.loggers as pl_loggers
 from pytorch_lightning import Trainer
 from pytorch_lightning.callbacks import LearningRateMonitor, ModelCheckpoint
+from torch.nn.modules import SyncBatchNorm
 
 import os
 import sys
@@ -41,9 +42,9 @@ parser.add_argument('--is_logger_enabled', default=False, action='store_true')
 parser.add_argument('--load_from_ckpt', default=False, action='store_true')
 
 parser.add_argument('--lr', type=float, default=0.005)
-parser.add_argument('--warmup_epochs', type=int, default=100)
-parser.add_argument('--decay_epochs', type=int, default=500)
-parser.add_argument('--max_epochs', type=int, default=1000)
+parser.add_argument('--warmup_rate', type=float, default=0.1)
+parser.add_argument('--decay_rate', type=float, default=0.4)
+parser.add_argument('--max_steps', type=int, default=50000)
 
 parser.add_argument('--projection_dim', type=int, default=512)
 parser.add_argument('--prediction_dim', type=int, default=512)
@@ -55,10 +56,12 @@ def main(args):
     print(args)
     set_random_seed(args.seed)
     # set device
-    os.environ["CUDA_VISIBLE_DEVICES"] = "1, 5"
+    os.environ["CUDA_VISIBLE_DEVICES"] = "3, 4"
 
     datamodule = FaceDataModule(args)
     model = FaceModel(args)
+    if args.gpus > 1:
+        model = SyncBatchNorm.convert_sync_batchnorm(model)
     if args.test:
         ckpt = state_dict_ckpt(args.test_ckpt_path)
         model.load_state_dict(ckpt)
@@ -84,16 +87,26 @@ def main(args):
         accelerator="ddp" if args.gpus > 1 else None,
         num_sanity_val_steps=args.num_sanity_val_steps,
         gpus=args.gpus,
-        max_epochs=args.max_epochs,
+        max_epochs=100000,
+        max_steps=args.max_steps,
         log_every_n_steps=50,
         callbacks=callbacks,
         check_val_every_n_epoch=args.check_val_every_n_epoch,
         gradient_clip_val=args.grad_clip,
     )
-    trainer.fit(method)
+    if args.test:
+        trainer.test(method)
+    else:
+        trainer.fit(method)
 
 if __name__ == "__main__":
     args = parser.parse_args()
+    # args.batch_size = 64
+    # args.projection_dim = 512
+    # args.prediction_dim = 512
+    # args.test = True
+    # args.gpus = 1
+    # args.test_ckpt_path = '/home/yuliu/Projects/Face/results/np_margin_res34/version_0/checkpoints/last.ckpt'
     if args.gpus > 1:
         args.batch_size = args.batch_size // args.gpus
     main(args)

@@ -27,8 +27,9 @@ class FaceDataset(Dataset):
 
         self.T1 = transforms.ToTensor()
         self.T2 = transforms.Compose([
-            transforms.RandomGrayscale(0.1),
-            transforms.RandomHorizontalFlip(1),
+            transforms.RandomHorizontalFlip(0.5),
+            transforms.RandomApply([transforms.ColorJitter(0.3, 0.15, 0.1, 0.1)], p=0.5),
+            transforms.RandomApply([transforms.GaussianBlur(31, 2)], p=0.5),
             transforms.ToTensor(),
         ])
         
@@ -43,7 +44,7 @@ class FaceDataset(Dataset):
                 random.shuffle(img_paths)
                 img1 = Image.open(img_paths[0]).convert("RGB")
                 img2 = Image.open(img_paths[1]).convert("RGB")
-                img_pair = [self.T1(img1), self.T1(img2)]
+                img_pair = [self.T1(img1), self.T2(img2)]
         else:
             img1 = Image.open(img_paths[0]).convert("RGB")
             img2 = Image.open(img_paths[1]).convert("RGB")
@@ -84,7 +85,7 @@ class FaceDataModule(pl.LightningDataModule):
 
         self.train_dataset = FaceDataset(args.data_root, 'train')
         self.val_dataset = FaceDataset(args.data_root, 'val')
-        self.test_dataset = FaceDataset(args.data_root, 'test')
+        self.test_dataset = FaceDataset(args.data_root, 'val')
 
     def train_dataloader(self):
         return DataLoader(

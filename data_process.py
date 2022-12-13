@@ -117,17 +117,49 @@ def generate_data_set():
         img_paths = img_paths_list[i]
         if len(img_paths) == 0:
             print(f'No face in {img_dirs[i]}')
+            idx.pop(idx.index(i))
             continue
-        if len(img_paths) >= 2:
-            pair_list.append(random.sample(img_paths, 2))
+        if len(img_paths) == 2:
+            pair_list.append(img_paths)
             label_list.append(1)
             N_pos += 1
-        else:
-            path1 = img_paths[0]
-            img_paths2 = img_paths_list[random.choice(idx)]
+        elif len(img_paths) > 2:
+            for j in range(len(img_paths)):
+                max_n = min(len(img_paths), 10)
+                for k in range(j+1, max_n):
+                    pair_list.append([img_paths[j], img_paths[k]])
+                    label_list.append(1)
+                    N_pos += 1
+    N_neg = 0
+    T = N_pos // len(idx)
+    for i in idx:
+        img_paths1 = img_paths_list[i]
+        path1 = random.choice(img_paths1)
+        for _ in range(T):
+            j = random.choice(idx)
+            while j == i:
+                j = random.choice(idx)
+            img_paths2 = img_paths_list[j]
             path2 = random.choice(img_paths2)
             pair_list.append([path1, path2])
             label_list.append(0)
+            N_neg += 1
+    for _ in range(N_pos - N_neg):
+        ids = random.sample(idx, 2)
+        img_paths1 = img_paths_list[ids[0]]
+        img_paths2 = img_paths_list[ids[1]]
+        path1 = random.choice(img_paths1)
+        path2 = random.choice(img_paths2)
+        pair_list.append([path1, path2])
+        label_list.append(0)
+        N_neg += 1
+    # shuffle label and pair
+    idx = list(range(len(label_list)))
+    random.shuffle(idx)
+    label_list = [label_list[i] for i in idx]
+    pair_list = [pair_list[i] for i in idx]
+    
+    print(f'N_neg: {N_neg}')
     print(f'N_pos: {N_pos}')
     with open(f'{DATA_ROOT}/val.txt', 'w') as f:
         for pair, label in zip(pair_list, label_list):

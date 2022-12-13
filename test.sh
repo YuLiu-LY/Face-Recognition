@@ -1,13 +1,12 @@
-python ../../train/train_trans_dec.py \
---dataset shapestacks \
---evaluate ari \
---monitor avg_ARI_FG \
---gpus 1 \
---batch_size 128 \
---num_slots 12 \
---log_name trans_dec \
---check_val_every_n_epoch 1 \
---is_logger_enabled \
+python train.py \
+--gpus 0 \
+--batch_size 64 \
+--log_name np_margin_res50 \
+--check_val_every_n_epoch 100 \
 --seed 42 \
---init_method 'embedding' \
---truncate 'bi-level' \
+--max_epochs 1000 \
+--num_workers 8 \
+--projection_dim 1024 \
+--prediction_dim 1024 \
+--test \
+--test_ckpt_path '/home/yuliu/Projects/Face/results/np_margin_res50/version_0/checkpoints/last.ckpt' \

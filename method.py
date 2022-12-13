@@ -39,10 +39,11 @@ class FaceMethod(pl.LightningModule):
 
         batch = next(self.val_iter)
         batch_img = batch['image'][:self.args.n_samples]
+        label = batch['label'][:self.args.n_samples] # [B]
         if self.args.gpus > 0:
             batch_img = batch_img.to(self.device)
 
-        pred, _ = self.model.predict(batch_img)
+        pred, _ = self.model.predict(batch_img, label)
         pred = pred.reshape(-1, 1, 1, 1, 1).expand(-1, 1, 3, 128, 128)
         out = torch.cat([batch_img, pred], dim=1)
         B, _, C, H, W = batch_img.shape
@@ -60,7 +61,7 @@ class FaceMethod(pl.LightningModule):
 
         batch_img = batch['image']
         label = batch['label'] # [B]
-        pred, loss = self.model.predict(batch_img)
+        pred, loss = self.model.predict(batch_img, label)
         acc = (pred == label).float().mean()
 
         output = {
@@ -85,11 +86,20 @@ class FaceMethod(pl.LightningModule):
             torch.cuda.empty_cache()
             self.empty_cache = False
 
-        batch_img = batch['image']
-        pred, loss = self.model.predict(batch_img)
+        # batch_img = batch['image']
+        # pred, loss = self.model.predict(batch_img)
         
+        # output = {
+        #     'loss': loss,
+        # }
+        batch_img = batch['image']
+        label = batch['label'] # [B]
+        pred, loss = self.model.predict(batch_img, label)
+        acc = (pred == label).float().mean()
+
         output = {
             'loss': loss,
+            'acc': acc,
         }
        
         return output
@@ -108,20 +118,23 @@ class FaceMethod(pl.LightningModule):
     def configure_optimizers(self):
         params = self.model.parameters()
         optimizer = optim.AdamW(params, lr=self.args.lr, weight_decay=1e-4)
+
+        warmup_steps = self.args.warmup_rate * self.args.max_steps
+        decay_steps = self.args.decay_rate * self.args.max_steps
         
-        def lr_scheduler_main(epoch: int):
-            if epoch < self.args.warmup_epochs:
-                factor = epoch / self.args.warmup_epochs
+        def lr_scheduler_main(step: int):
+            if step < warmup_steps:
+                factor = step / warmup_steps
             else:
                 factor = 1
-            factor *= 0.5 ** (epoch // self.args.decay_epochs)
+            factor *= 0.5 ** (step // decay_steps)
             return factor
 
         scheduler = optim.lr_scheduler.LambdaLR(optimizer=optimizer, lr_lambda=[lr_scheduler_main])
 
         return (
             [optimizer],
-            [{"scheduler": scheduler, "interval": "epoch",}],
+            [{"scheduler": scheduler, "interval": "step",}],
         )
 
     

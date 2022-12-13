@@ -21,7 +21,6 @@ class FaceModel(nn.Module):
             nn.BatchNorm1d(hidden_dim),
             nn.ReLU(inplace=True),
             nn.Linear(hidden_dim, proj_dim, bias=False),
-            nn.BatchNorm1d(proj_dim, affine=False)
         ) 
 
         # # prediction head
@@ -36,9 +35,9 @@ class FaceModel(nn.Module):
         # self.criterion = nn.CrossEntropyLoss()
         # self.tau = 1
 
-        # self.margin = 0.5
-        self.positive_margin = 0.5
-        self.negitive_margin = 2
+        self.margin = 2
+        self.positive_margin = 0.25
+        self.negitive_margin = 5
 
 
     def forward(self, x):
@@ -62,25 +61,35 @@ class FaceModel(nn.Module):
         loss = self.triplet_loss(z1, z2)
         return loss.mean()
     
-    def triplet_loss(self, z1, z2):
+    def triplet_loss(self, z1, z2, label=None):
         # compute the euclidean distance between all embeddings
-        dist = torch.cdist(z1, z2) # [B, B]
-        dist1 = dist + torch.eye(dist.shape[0], device=dist.device) * 1e6
-        negative = torch.min(dist1, dim=1)[0] # [B]
-        positive = torch.diagonal(dist) # [B]
-        # compute the triplet loss
-        # loss = torch.clamp(self.margin + positive - negative, min=0.0)
-        loss = torch.clamp(positive - self.positive_margin, min=0.0) + torch.clamp(self.negitive_margin - negative, min=0.0)
-        return loss.mean()
+        if label is not None:
+            dist = F.pairwise_distance(z1, z2)
+            positive = dist[label == 1]
+            negative = dist[label == 0]
+            loss2 = torch.clamp(positive - self.positive_margin, min=0.0)
+            loss3 = torch.clamp(self.negitive_margin - negative, min=0.0)
+            return loss2.mean() + loss3.mean()
+        else:
+            dist = torch.cdist(z1, z2) # [B, B]
+            positive = torch.diagonal(dist) # [B]
+            negtive_mask = torch.ones_like(dist) - torch.eye(dist.shape[0]).to(dist.device)
+            negative = dist * negtive_mask
+            hard_negative = negative.min(dim=1)[0] # [B]
+            # compute the triplet loss
+            loss1 = torch.clamp(self.margin + positive - hard_negative, min=0.0)
+            loss2 = torch.clamp(positive - self.positive_margin, min=0.0) 
+            loss3 = torch.clamp(self.negitive_margin - negative, min=0.0)
+            return loss1.mean() + loss2.mean() + loss3.mean()
 
-    def predict(self, x):
+    def predict(self, x, label):
         # x: [B, 2, C, H, W]
         # z1, z2, p1, p2 = self.forward(x)
         # loss = 0.5 * (self.contrastive_loss(z1, p2) + self.contrastive_loss(z2, p1))
         # pred = nn.CosineSimilarity(dim=1)(z1, z2) > self.margin
         # return pred.int(), loss
         z1, z2 = self.forward(x)
-        loss = self.triplet_loss(z1, z2)
+        loss = self.triplet_loss(z1, z2, label)
         pred = F.pairwise_distance(z1, z2) < 1
         return pred.int(), loss.mean()
     
