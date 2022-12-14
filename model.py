@@ -14,9 +14,9 @@ class FaceModel(nn.Module):
         self.triplet_weight = args.triplet_weight
         self.predict_mode = args.predict_mode # 'cosine' or 'euclidean'
         
-        self.s = args.scale
+        self.s = torch.tensor(args.scale).log()
         if args.learn_scale:
-            self.s = nn.Parameter(torch.tensor(self.s).log())
+            self.s = nn.Parameter(self.s)
 
     def forward(self, x):
         # x: [B, 2, C, H, W]
@@ -57,7 +57,7 @@ class FaceModel(nn.Module):
         z = F.normalize(z, dim=1)
         logits = torch.einsum('nc, mc->nm', [p, z]) 
         logits = logits - m * torch.eye(logits.shape[0]).to(logits.device)
-        logits = self.s * logits
+        logits = self.s.exp() * logits
         loss = - F.log_softmax(logits, dim=1).diag()
         return loss.mean()
     
@@ -115,7 +115,7 @@ class DownBlock(nn.Module):
         self.block = nn.Sequential(
             nn.Conv2d(in_ch, out_ch, 3, 2, 1),
             nn.BatchNorm2d(out_ch),
-            nn.PReLU(out_ch),
+            nn.ReLU(),
         )
     
     def forward(self, x):
@@ -128,10 +128,10 @@ class ConvBlock(nn.Module):
         self.block = nn.Sequential(
             nn.Conv2d(in_ch, out_ch, 3, 1, 1),
             nn.BatchNorm2d(out_ch),
-            nn.PReLU(out_ch),
+            nn.ReLU(),
             nn.Conv2d(out_ch, out_ch, 3, 1, 1),
             nn.BatchNorm2d(out_ch),
-            nn.PReLU(out_ch),
+            nn.ReLU(),
         )
     
     def forward(self, x):

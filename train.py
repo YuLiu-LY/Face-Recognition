@@ -46,7 +46,7 @@ parser.add_argument('--lr', type=float, default=0.1)
 parser.add_argument('--lr_mode', type=str, default='cosine', help='step, cosine')
 parser.add_argument('--warmup_rate', type=float, default=0.1)
 parser.add_argument('--decay_rate', type=float, default=0.4)
-parser.add_argument('--max_steps', type=int, default=50000)
+parser.add_argument('--max_steps', type=int, default=35000)
 
 parser.add_argument('--m_warmup_steps', type=int, default=15000)
 parser.add_argument('--margin', type=float, default=0.35)
