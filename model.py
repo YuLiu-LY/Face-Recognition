@@ -104,7 +104,7 @@ class FaceNet(nn.Module):
     
     def forward(self, x):
         x = self.conv_blocks(x)
-        x = F.adaptive_avg_pool1d(x, 1).squeeze()
+        x = F.adaptive_avg_pool2d(x, 1).squeeze()
         x = self.fc(x)
         return x
 
