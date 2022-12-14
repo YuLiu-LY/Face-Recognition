@@ -124,7 +124,6 @@ def crop_and_align_all_face():
         aligned_face = get_face_img(img_path, model='cnn')
         if aligned_face is None:
             continue
-        aligned_face = Image.fromarray(aligned_face)
         # save img
         aligned_face.save(img_path.replace('.jpg', '_a.jpg'))
     print('Processing test data...')
