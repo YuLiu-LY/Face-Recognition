@@ -116,3 +116,4 @@ if __name__ == "__main__":
         args.batch_size = args.batch_size // args.gpus
     main(args)
 
+# salloc --gres=gpu:1 --job-name task --time 24:00:00 --qos gpu --cpus-per-task 32 

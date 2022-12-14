@@ -1,5 +1,5 @@
+cmake
+opencv-python
 pytorch_lightning==1.1.4
 tqdm==4.64.1
 tensorboard==2.10.0
-opencv-python
-cmake

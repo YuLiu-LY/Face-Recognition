@@ -26,13 +26,11 @@ class FaceDataset(Dataset):
         self.get_files()
 
         self.T1 = transforms.Compose([
-            transforms.Resize((112, 96)),
             transforms.ToTensor(),
             transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5]),
         ])
         self.T2 = transforms.Compose([
-            transforms.Resize((112, 96)),
-            transforms.RandomHorizontalFlip(0.5),
+            transforms.RandomHorizontalFlip(1),
             transforms.RandomApply([transforms.ColorJitter(0.3, 0.15, 0.1, 0.1)], p=0.5),
             transforms.RandomApply([transforms.GaussianBlur(31, 2)], p=0.5),
             transforms.ToTensor(),
@@ -126,7 +124,7 @@ if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser()
     args = parser.parse_args()
-    args.data_root = '/home/yuliu/Dataset/Face'
+    args.data_root = '/scratch/generalvision/SlotAttention/Face'
     args.use_rescale = False
     args.batch_size = 20
     args.num_workers = 0
