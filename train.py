@@ -36,6 +36,7 @@ parser.add_argument('--check_val_every_n_epoch', type=int, default=1)
 parser.add_argument('--n_samples', type=int, default=16)
 parser.add_argument('--batch_size', type=int, default=256)
 parser.add_argument('--gpus', type=int, default=0)
+parser.add_argument('--device', type=str, default='1')
 parser.add_argument('--grad_clip', type=float, default=0)
 
 parser.add_argument('--is_logger_enabled', default=False, action='store_true')
@@ -59,7 +60,7 @@ def main(args):
     print(args)
     set_random_seed(args.seed)
     # set device
-    os.environ["CUDA_VISIBLE_DEVICES"] = "2, 3"
+    os.environ["CUDA_VISIBLE_DEVICES"] = args.device
 
     datamodule = FaceDataModule(args)
     model = FaceModel(args)
