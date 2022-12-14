@@ -41,7 +41,7 @@ parser.add_argument('--grad_clip', type=float, default=0)
 parser.add_argument('--is_logger_enabled', default=False, action='store_true')
 parser.add_argument('--load_from_ckpt', default=False, action='store_true')
 
-parser.add_argument('--lr', type=float, default=0.005)
+parser.add_argument('--lr', type=float, default=0.1)
 parser.add_argument('--warmup_rate', type=float, default=0.1)
 parser.add_argument('--decay_rate', type=float, default=0.4)
 parser.add_argument('--max_steps', type=int, default=50000)
@@ -50,13 +50,16 @@ parser.add_argument('--projection_dim', type=int, default=512)
 parser.add_argument('--prediction_dim', type=int, default=512)
 
 parser.add_argument('--test', action='store_true')
+parser.add_argument('--contras_weight', type=float, default=1)
+parser.add_argument('--triplet_weight', type=float, default=0)
+parser.add_argument('--predict_mode', type=str, default='cosine', help='cosine, euclidean')
 
 
 def main(args):
     print(args)
     set_random_seed(args.seed)
     # set device
-    os.environ["CUDA_VISIBLE_DEVICES"] = "3, 4"
+    os.environ["CUDA_VISIBLE_DEVICES"] = "2, 3"
 
     datamodule = FaceDataModule(args)
     model = FaceModel(args)
@@ -95,6 +98,7 @@ def main(args):
         gradient_clip_val=args.grad_clip,
     )
     if args.test:
+        # method.find_best_threshold()
         trainer.test(method)
     else:
         trainer.fit(method)
@@ -102,11 +106,11 @@ def main(args):
 if __name__ == "__main__":
     args = parser.parse_args()
     # args.batch_size = 64
-    # args.projection_dim = 512
-    # args.prediction_dim = 512
-    # args.test = True
+    # args.projection_dim = 256
+    # # args.test = True
     # args.gpus = 1
-    # args.test_ckpt_path = '/home/yuliu/Projects/Face/results/np_margin_res34/version_0/checkpoints/last.ckpt'
+    # args.predict_mode = 'euclidean'
+    # args.test_ckpt_path = '/home/yuliu/Projects/Face/results/d256_b512/version_4/checkpoints/last.ckpt'
     if args.gpus > 1:
         args.batch_size = args.batch_size // args.gpus
     main(args)

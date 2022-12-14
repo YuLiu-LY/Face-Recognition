@@ -1,12 +1,9 @@
 python train.py \
---gpus 0 \
---batch_size 64 \
---log_name np_margin_res50 \
---check_val_every_n_epoch 100 \
+--gpus 1 \
+--batch_size 128 \
 --seed 42 \
---max_epochs 1000 \
 --num_workers 8 \
---projection_dim 1024 \
---prediction_dim 1024 \
+--projection_dim 256 \
 --test \
---test_ckpt_path '/home/yuliu/Projects/Face/results/np_margin_res50/version_0/checkpoints/last.ckpt' \
+--test_ckpt_path '/home/yuliu/Projects/Face/results/d256_b512/version_1/checkpoints/last.ckpt' \
+--predict_mode 'euclidean' \

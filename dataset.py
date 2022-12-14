@@ -25,12 +25,18 @@ class FaceDataset(Dataset):
 
         self.get_files()
 
-        self.T1 = transforms.ToTensor()
+        self.T1 = transforms.Compose([
+            transforms.Resize((112, 96)),
+            transforms.ToTensor(),
+            transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5]),
+        ])
         self.T2 = transforms.Compose([
+            transforms.Resize((112, 96)),
             transforms.RandomHorizontalFlip(0.5),
             transforms.RandomApply([transforms.ColorJitter(0.3, 0.15, 0.1, 0.1)], p=0.5),
             transforms.RandomApply([transforms.GaussianBlur(31, 2)], p=0.5),
             transforms.ToTensor(),
+            transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5]),
         ])
         
     def __getitem__(self, index: int):
@@ -44,7 +50,7 @@ class FaceDataset(Dataset):
                 random.shuffle(img_paths)
                 img1 = Image.open(img_paths[0]).convert("RGB")
                 img2 = Image.open(img_paths[1]).convert("RGB")
-                img_pair = [self.T1(img1), self.T2(img2)]
+                img_pair = [self.T1(img1), self.T1(img2)]
         else:
             img1 = Image.open(img_paths[0]).convert("RGB")
             img2 = Image.open(img_paths[1]).convert("RGB")

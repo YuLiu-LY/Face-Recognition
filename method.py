@@ -1,4 +1,3 @@
-import math
 import torch
 import pytorch_lightning as pl
 from torch import optim
@@ -21,6 +20,7 @@ class FaceMethod(pl.LightningModule):
         self.val_iter = iter(self.datamodule.val_dataloader())
         self.sample_num = 0
         self.empty_cache = True
+        self.threshold = 0.5
 
     def forward(self, input, **kwargs):
         return self.model(input, **kwargs)
@@ -39,16 +39,22 @@ class FaceMethod(pl.LightningModule):
 
         batch = next(self.val_iter)
         batch_img = batch['image'][:self.args.n_samples]
-        label = batch['label'][:self.args.n_samples] # [B]
+        label = batch['label'][:self.args.n_samples]
         if self.args.gpus > 0:
             batch_img = batch_img.to(self.device)
+            label = label.to(self.device)
 
-        pred, _ = self.model.predict(batch_img, label)
-        pred = pred.reshape(-1, 1, 1, 1, 1).expand(-1, 1, 3, 128, 128)
-        out = torch.cat([batch_img, pred], dim=1)
         B, _, C, H, W = batch_img.shape
+
+        dist = self.model.predict(batch_img)
+        pred = dist < self.threshold
+        pred = pred.reshape(-1, 1, 1, 1, 1).expand(-1, 1, 3, H, W)
+        label = label.reshape(-1, 1, 1, 1, 1).expand(-1, 1, 3, H, W)
+        label = label.float()
+        batch_img = batch_img / 2 + 0.5
+        out = torch.cat([batch_img, pred, label], dim=1)
         images = vutils.make_grid(
-            out.reshape(-1, C, H, W), normalize=False, nrow=2,
+            out.reshape(-1, C, H, W), normalize=False, nrow=4,
             padding=3, pad_value=0,
         )
 
@@ -61,25 +67,36 @@ class FaceMethod(pl.LightningModule):
 
         batch_img = batch['image']
         label = batch['label'] # [B]
-        pred, loss = self.model.predict(batch_img, label)
-        acc = (pred == label).float().mean()
-
-        output = {
-            'loss': loss,
-            'acc': acc,
-        }
+        dist = self.model.predict(batch_img)
        
-        return output
+        return dist, label
 
     def validation_epoch_end(self, outputs):
         self.empty_cache = True
-        keys = outputs[0].keys()
+        if self.args.predict_mode == 'cosine':
+            thresholds = torch.linspace(-1, 0, 200) 
+        elif self.args.predict_mode == 'euclidean':
+            thresholds = torch.linspace(0, 1.5, 200)
         logs = {}
-        for k in keys:
-            v = torch.stack([x[k] for x in outputs]).mean()
-            logs['avg_' + k] = v
+        dists = []
+        labels = []
+        for dist, label in outputs:
+            dists.append(dist)
+            labels.append(label)
+        dists = torch.cat(dists, dim=0)
+        labels = torch.cat(labels, dim=0)
+        accs = []
+        for threshold in thresholds:
+            pred = dists < threshold
+            acc = (pred == labels).float().mean()
+            accs.append(acc)
+        accs = torch.stack(accs, dim=0)
+        logs['avg_acc'] = accs.max()
+        best_threshold = thresholds[accs.argmax()]
+        self.threshold = best_threshold
+        print(f"Best threshold: {best_threshold.item():.6f}")
+        print(f"Best acc for validation: {accs.max().item():.6f}")
         self.log_dict(logs, sync_dist=True)
-        print("; ".join([f"{k}: {v.item():.6f}" for k, v in logs.items()]))
     
     def test_step(self, batch, batch_idx):
         if self.empty_cache:
@@ -94,40 +111,63 @@ class FaceMethod(pl.LightningModule):
         # }
         batch_img = batch['image']
         label = batch['label'] # [B]
-        pred, loss = self.model.predict(batch_img, label)
-        acc = (pred == label).float().mean()
-
-        output = {
-            'loss': loss,
-            'acc': acc,
-        }
+        dist = self.model.predict(batch_img)
        
-        return output
+        return dist, label
 
     def test_epoch_end(self, outputs):
         self.empty_cache = True
-        keys = outputs[0].keys()
+        if self.args.predict_mode == 'cosine':
+            thresholds = torch.linspace(-1, 1, 400) 
+        elif self.args.predict_mode == 'euclidean':
+            thresholds = torch.linspace(0, 2, 400)
         logs = {}
-        for k in keys:
-            v = torch.stack([x[k] for x in outputs]).mean()
-            logs['avg_' + k] = v
-        self.log_dict(logs)
-        print("; ".join([f"{k}: {v.item():.6f}" for k, v in logs.items()]))
+        dists = []
+        labels = []
+        for dist, label in outputs:
+            dists.append(dist)
+            labels.append(label)
+        dists = torch.cat(dists, dim=0)
+        labels = torch.cat(labels, dim=0)
+        accs = []
+        for threshold in thresholds:
+            pred = dists < threshold
+            acc = (pred == labels).float().mean()
+            accs.append(acc)
+        accs = torch.stack(accs, dim=0)
+        logs['avg_acc'] = accs.max()
+        best_threshold = thresholds[accs.argmax()]
+        self.threshold = best_threshold
+        print(f"Best threshold: {best_threshold.item():.6f}")
+        print(f"Best acc for validation: {accs.max().item():.6f}")
 
 
     def configure_optimizers(self):
         params = self.model.parameters()
-        optimizer = optim.AdamW(params, lr=self.args.lr, weight_decay=1e-4)
+        optimizer = optim.SGD(params, lr=self.args.lr, weight_decay=5e-4)
 
         warmup_steps = self.args.warmup_rate * self.args.max_steps
         decay_steps = self.args.decay_rate * self.args.max_steps
+        decay1 = 16000
+        decay2 = 24000
+        decay3 = 28000
         
+        # def lr_scheduler_main(step: int):
+        #     if step < warmup_steps:
+        #         factor = step / warmup_steps
+        #     else:
+        #         factor = 1
+        #     factor *= 0.5 ** (step / decay_steps)
+        #     return factor
         def lr_scheduler_main(step: int):
-            if step < warmup_steps:
-                factor = step / warmup_steps
-            else:
+            if step < decay1:
                 factor = 1
-            factor *= 0.5 ** (step // decay_steps)
+            elif step < decay2:
+                factor = 0.1
+            elif step < decay3:
+                factor = 0.01
+            else:
+                factor = 0.001
             return factor
 
         scheduler = optim.lr_scheduler.LambdaLR(optimizer=optimizer, lr_lambda=[lr_scheduler_main])
@@ -137,4 +177,39 @@ class FaceMethod(pl.LightningModule):
             [{"scheduler": scheduler, "interval": "step",}],
         )
 
-    
+    def find_best_threshold(self):
+        print("Finding best threshold...")
+        print('Predict mode: ', self.args.predict_mode)
+        if self.args.gpus > 0:
+            self.model.to(self.device)
+        if self.args.predict_mode == 'cosine':
+            thresholds = torch.linspace(-1, 1, 400) 
+        elif self.args.predict_mode == 'euclidean':
+            thresholds = torch.linspace(0, 2, 400)
+        self.model.eval()
+        dataloader = self.datamodule.val_dataloader()
+        with torch.no_grad():
+            dists = []
+            labels = []
+            for batch in dataloader:
+                batch_img = batch['image']
+                label = batch['label']
+                if self.args.gpus > 0:
+                    batch_img = batch_img.to(self.device)
+                    label = label.to(self.device)
+                dist = self.model.predict(batch_img)
+                dists.append(dist)
+                labels.append(label)
+            dists = torch.cat(dists, dim=0)
+            labels = torch.cat(labels, dim=0)
+
+            accs = []
+            for threshold in thresholds:
+                pred = dists < threshold
+                acc = (pred == labels).float().mean()
+                accs.append(acc)
+            accs = torch.stack(accs, dim=0)
+            best_threshold = thresholds[accs.argmax()]
+            self.threshold = best_threshold
+            print(f"Best threshold: {best_threshold.item():.6f}")
+            print(f"Best acc for validation: {accs.max().item():.6f}")
