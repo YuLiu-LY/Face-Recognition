@@ -1,11 +1,29 @@
 import os
 import cv2
+import math
 import random
 import numpy as np
 import face_recognition as fr
 from PIL import Image
 from glob import glob
 from tqdm import tqdm
+from torchvision.transforms import Resize
+
+DATA_ROOT = '/home/yuliu/Dataset/Face1'
+
+
+def rotate(p, o, angle):
+    '''
+    Rotate point p around point o with angle
+    p: (x, y)
+    o: (x, y)
+    angle: degree
+    H: height of image
+    '''
+    angle = angle * np.pi / 180
+    x = o[0] + math.cos(angle) * (p[0] - o[0]) - math.sin(angle) * (o[1] - p[1])
+    y = o[1] - math.sin(angle) * (p[0] - o[0]) - math.cos(angle) * (o[1] - p[1])
+    return int(x), int(y)
 
 
 def align_face(face, landmarks):
@@ -28,18 +46,48 @@ def align_face(face, landmarks):
     # rotate face to align eyes
     M_rotate = cv2.getRotationMatrix2D(center, angle, 1)
     rotated_face = cv2.warpAffine(face, M_rotate, (face.shape[1], face.shape[0]))
-    # crop face
-    return rotated_face
+    # rotate landmarks
+    for key in landmarks.keys():
+        for i in range(len(landmarks[key])):
+            landmarks[key][i] = rotate(landmarks[key][i], center, angle)
+    return rotated_face, landmarks
 
-def crop_face(face, location, img_size):
+
+def check_valid_crop(top, bottom, left, right, H, W):
+    top = max(0, top)
+    bottom = min(H, bottom)
+    left = max(0, left)
+    right = min(W, right)
+    return top, bottom, left, right
+
+def crop_face(face, landmarks, img_size):
     '''
-    Crop face by face location
+    Crop face by face landmarks
     face: (H, W, C)
-    location: (top, right, bottom, left)
+    landmarks: dict, 68 points of face, (x, y)
     img_size: [H, W]
+    The implementation here refers to the design of paper 'Pairwise Relational Networks for Face Recognition'
     '''
-    face = face[location[0]:location[2], location[3]:location[1]]
-    face = cv2.resize(face, img_size)
+    H, W = img_size
+    eye = [landmarks['left_eye'], landmarks['right_eye']]
+    eye = np.concatenate(eye, axis=0)
+    center_eye = eye.mean(axis=0).astype(np.int32)
+    lip = [landmarks['top_lip'], landmarks['bottom_lip']]
+    lip = np.concatenate(lip, axis=0)
+    center_lip = lip.mean(axis=0).astype(np.int32)
+    H_mid = center_lip[1] - center_eye[1] # the height of mid face (eye to lip), 35% of face height
+    top = center_eye[1] - int(H_mid)
+    bottom = center_lip[1] + int(H_mid / 0.35 * 0.3)
+    d_y = bottom - top
+    d_x = int(d_y * W / H)
+    x_l = np.min(landmarks['chin'], axis=0)[0]
+    x_r = np.max(landmarks['chin'], axis=0)[0]
+    center_x = int((x_l + x_r) / 2)
+    left = center_x - d_x // 2
+    right = center_x + d_x // 2
+    top, bottom, left, right = check_valid_crop(top, bottom, left, right, face.shape[0], face.shape[1])
+    face = face[top:bottom, left:right]
+    face = Resize(img_size)(Image.fromarray(face))
     return face
 
 
@@ -49,15 +97,10 @@ def get_face_img(path, model='hog'):
     if len(location) == 0:
         return None
     landmarks = fr.face_landmarks(img, location)[0] # 68 points of face, dict
-    aligned_face = align_face(img, landmarks)
-    location = fr.face_locations(aligned_face, model=model)
-    if len(location) == 0:
-        return None
-    aligned_face = crop_face(aligned_face, location[0], (112, 96))
+    aligned_face, aligned_landmarks = align_face(img, landmarks)
+    aligned_face = crop_face(aligned_face, aligned_landmarks, (112, 96))
     return aligned_face
 
-
-DATA_ROOT = '/scratch/generalvision/SlotAttention/Face'
 
 def crop_and_align_all_face():
     # process train data
@@ -73,7 +116,6 @@ def crop_and_align_all_face():
             if aligned_face is None:
                 failed_list.append(img_path)
                 continue
-            aligned_face = Image.fromarray(aligned_face)
             # save img
             aligned_face.save(img_path.replace('.jpg', '_a.jpg'))
     # process failed data with cnn model
@@ -93,9 +135,9 @@ def crop_and_align_all_face():
             if img_path[-6:] == '_a.jpg' or os.path.exists(img_path.replace('.jpg', '_a.jpg')):
                 continue
             aligned_face = get_face_img(img_path, model='cnn')
-            aligned_face = Image.fromarray(aligned_face)
             # save img
             aligned_face.save(img_path.replace('.jpg', '_a.jpg'))
+
 
 def generate_data_set():
     # generate validation set
@@ -173,7 +215,6 @@ def generate_data_set():
             f.write(f'{pair[0]},{pair[1]}\n')
 
 
-
 def generate_label():
     img_dirs = [f'{DATA_ROOT}/test_pair/{i}' for i in range(600)]
     img_paths_list = [[f'{dir}/A.jpg', f'{dir}/B.jpg'] for dir in img_dirs]
@@ -198,6 +239,7 @@ def generate_label():
         for l in label:
             f.write(f'{l}\n')
     
+
 def get_embedding(path):
     img = fr.load_image_file(path)
     face_locations = fr.face_locations(img)
