@@ -47,8 +47,13 @@ parser.add_argument('--warmup_rate', type=float, default=0.1)
 parser.add_argument('--decay_rate', type=float, default=0.4)
 parser.add_argument('--max_steps', type=int, default=50000)
 
+parser.add_argument('--m_warmup_steps', type=int, default=15000)
+parser.add_argument('--margin', type=float, default=0.35)
+parser.add_argument('--scale', type=int, default=64)
+parser.add_argument('--learn_scale', default=False, action='store_true')
+
+parser.add_argument('--N_layer', type=int, default=64)
 parser.add_argument('--projection_dim', type=int, default=512)
-parser.add_argument('--prediction_dim', type=int, default=512)
 
 parser.add_argument('--test', action='store_true')
 parser.add_argument('--contras_weight', type=float, default=1)

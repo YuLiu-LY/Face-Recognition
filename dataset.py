@@ -1,9 +1,3 @@
-import os
-import sys
-root_path = os.path.abspath(__file__)
-root_path = '/'.join(root_path.split('/')[:-2])
-sys.path.append(root_path)
-
 import torch
 import random
 from PIL import Image
@@ -30,7 +24,8 @@ class FaceDataset(Dataset):
             transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5]),
         ])
         self.T2 = transforms.Compose([
-            transforms.RandomHorizontalFlip(1),
+            transforms.RandomHorizontalFlip(0.5),
+            transforms.RandomGrayscale(p=0.2),
             transforms.RandomApply([transforms.ColorJitter(0.3, 0.15, 0.1, 0.1)], p=0.5),
             transforms.RandomApply([transforms.GaussianBlur(31, 2)], p=0.5),
             transforms.ToTensor(),
@@ -48,7 +43,7 @@ class FaceDataset(Dataset):
                 random.shuffle(img_paths)
                 img1 = Image.open(img_paths[0]).convert("RGB")
                 img2 = Image.open(img_paths[1]).convert("RGB")
-                img_pair = [self.T1(img1), self.T1(img2)]
+                img_pair = [self.T1(img1), self.T2(img2)]
         else:
             img1 = Image.open(img_paths[0]).convert("RGB")
             img2 = Image.open(img_paths[1]).convert("RGB")

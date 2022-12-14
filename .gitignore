@@ -5,3 +5,5 @@ events*
 /results/*
 *.slurm
 *.out
+*.sh
+*.ipynb

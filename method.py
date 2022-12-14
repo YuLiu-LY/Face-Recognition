@@ -21,13 +21,18 @@ class FaceMethod(pl.LightningModule):
         self.sample_num = 0
         self.empty_cache = True
         self.threshold = 0.5
+        self.margin = 0
 
     def forward(self, input, **kwargs):
         return self.model(input, **kwargs)
 
     def training_step(self, batch, batch_idx):
+        if self.global_step >= self.args.m_warmup_steps:
+            self.margin = self.args.margin
+        else:
+            self.margin = self.global_step / self.args.m_warmup_steps * self.args.margin
         batch_img = batch['image']
-        loss = self.model.loss(batch_img)
+        loss = self.model.loss(batch_img, margin=self.margin)
         logs = {'loss': loss}
         self.log_dict(logs, sync_dist=True)
         return {'loss': loss}
@@ -103,12 +108,6 @@ class FaceMethod(pl.LightningModule):
             torch.cuda.empty_cache()
             self.empty_cache = False
 
-        # batch_img = batch['image']
-        # pred, loss = self.model.predict(batch_img)
-        
-        # output = {
-        #     'loss': loss,
-        # }
         batch_img = batch['image']
         label = batch['label'] # [B]
         dist = self.model.predict(batch_img)
