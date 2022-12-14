@@ -21,7 +21,7 @@ class FaceMethod(pl.LightningModule):
         self.val_iter = iter(self.datamodule.val_dataloader())
         self.sample_num = 0
         self.empty_cache = True
-        self.threshold = 0.5
+        self.threshold = -0.2
         self.margin = 0
 
     def forward(self, input, **kwargs):
@@ -118,9 +118,9 @@ class FaceMethod(pl.LightningModule):
     def test_epoch_end(self, outputs):
         self.empty_cache = True
         if self.args.predict_mode == 'cosine':
-            thresholds = torch.linspace(-1, 1, 400) 
+            thresholds = torch.linspace(-1, 0, 500) 
         elif self.args.predict_mode == 'euclidean':
-            thresholds = torch.linspace(0, 2, 400)
+            thresholds = torch.linspace(0, 1.5, 500)
         logs = {}
         dists = []
         labels = []
@@ -185,8 +185,7 @@ class FaceMethod(pl.LightningModule):
     def find_best_threshold(self):
         print("Finding best threshold...")
         print('Predict mode: ', self.args.predict_mode)
-        if self.args.gpus > 0:
-            self.model.to(self.device)
+        self.model.to(self.device)
         if self.args.predict_mode == 'cosine':
             thresholds = torch.linspace(-1, 1, 400) 
         elif self.args.predict_mode == 'euclidean':
@@ -197,11 +196,8 @@ class FaceMethod(pl.LightningModule):
             dists = []
             labels = []
             for batch in dataloader:
-                batch_img = batch['image']
-                label = batch['label']
-                if self.args.gpus > 0:
-                    batch_img = batch_img.to(self.device)
-                    label = label.to(self.device)
+                batch_img = batch['image'].to(self.device)
+                label = batch['label'].to(self.device) # [B]
                 dist = self.model.predict(batch_img)
                 dists.append(dist)
                 labels.append(label)

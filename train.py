@@ -22,7 +22,7 @@ from utils import set_random_seed, state_dict_ckpt, ImageLogCallback
 
 parser = argparse.ArgumentParser()
 
-parser.add_argument('--data_root', default='/home/yuliu/Dataset/Face')
+parser.add_argument('--data_root', default='/home/yuliu/Dataset/Face1')
 parser.add_argument('--log_name', default='test')
 parser.add_argument('--log_path', default='/home/yuliu/Projects/Face/results/')
 parser.add_argument('--ckpt_path', default='.ckpt')
@@ -55,6 +55,7 @@ parser.add_argument('--learn_scale', default=False, action='store_true')
 
 parser.add_argument('--N_layer', type=int, default=64)
 parser.add_argument('--projection_dim', type=int, default=512)
+parser.add_argument('--relu_type', type=str, default='relu', help='relu, prelu')
 
 parser.add_argument('--test', action='store_true')
 parser.add_argument('--contras_weight', type=float, default=1)
@@ -105,8 +106,11 @@ def main(args):
         gradient_clip_val=args.grad_clip,
     )
     if args.test:
-        # method.find_best_threshold()
         trainer.test(method)
+        # images = method.sample_images()
+        # from torchvision import transforms
+        # img = transforms.ToPILImage()(images)
+        # img.save('sample.png')
     else:
         trainer.fit(method)
 
@@ -114,10 +118,13 @@ if __name__ == "__main__":
     args = parser.parse_args()
     # args.batch_size = 64
     # args.projection_dim = 256
-    # # args.test = True
+    # args.test = True
+    # args.relu_type = 'prelu'
     # args.gpus = 1
-    # args.predict_mode = 'euclidean'
-    # args.test_ckpt_path = '/home/yuliu/Projects/Face/results/d256_b512/version_4/checkpoints/last.ckpt'
+    # args.device = '4'
+    # # args.predict_mode = 'euclidean'
+    # args.test_ckpt_path = '/home/yuliu/Projects/Face/results/no_maigin/version_0/checkpoints/epoch=499-step=19999.ckpt'
+    # # args.test_ckpt_path = '/home/yuliu/Projects/Face/results/warm_maigin_0.35_s10/version_1/checkpoints/last.ckpt'
     if args.gpus > 1:
         args.batch_size = args.batch_size // args.gpus
     main(args)
