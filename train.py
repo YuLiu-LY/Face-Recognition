@@ -43,6 +43,7 @@ parser.add_argument('--is_logger_enabled', default=False, action='store_true')
 parser.add_argument('--load_from_ckpt', default=False, action='store_true')
 
 parser.add_argument('--lr', type=float, default=0.1)
+parser.add_argument('--lr_mode', type=str, default='cosine', help='step, cosine')
 parser.add_argument('--warmup_rate', type=float, default=0.1)
 parser.add_argument('--decay_rate', type=float, default=0.4)
 parser.add_argument('--max_steps', type=int, default=50000)

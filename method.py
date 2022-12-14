@@ -1,3 +1,4 @@
+import math
 import torch
 import pytorch_lightning as pl
 from torch import optim
@@ -158,16 +159,21 @@ class FaceMethod(pl.LightningModule):
         #         factor = 1
         #     factor *= 0.5 ** (step / decay_steps)
         #     return factor
-        def lr_scheduler_main(step: int):
-            if step < decay1:
-                factor = 1
-            elif step < decay2:
-                factor = 0.1
-            elif step < decay3:
-                factor = 0.01
-            else:
-                factor = 0.001
-            return factor
+        if self.args.lr_mode == 'cosine':
+            def lr_scheduler_main(step: int):
+                factor = self.cosine_anneal(step, decay3, 0, 1, 0.001)
+                return factor
+        elif self.args.lr_mode == 'step':
+            def lr_scheduler_main(step: int):
+                if step < decay1:
+                    factor = 1
+                elif step < decay2:
+                    factor = 0.1
+                elif step < decay3:
+                    factor = 0.01
+                else:
+                    factor = 0.001
+                return factor
 
         scheduler = optim.lr_scheduler.LambdaLR(optimizer=optimizer, lr_lambda=[lr_scheduler_main])
 
@@ -212,3 +218,19 @@ class FaceMethod(pl.LightningModule):
             self.threshold = best_threshold
             print(f"Best threshold: {best_threshold.item():.6f}")
             print(f"Best acc for validation: {accs.max().item():.6f}")
+
+    def cosine_anneal(self, step, final_step, start_step=0, start_value=1.0, final_value=0.1):
+    
+        assert start_value >= final_value
+        assert start_step <= final_step
+        
+        if step < start_step:
+            value = start_value
+        elif step >= final_step:
+            value = final_value
+        else:
+            a = 0.5 * (start_value - final_value)
+            b = 0.5 * (start_value + final_value)
+            progress = (step - start_step) / (final_step - start_step)
+            value = a * math.cos(math.pi * progress) + b
+        return value
