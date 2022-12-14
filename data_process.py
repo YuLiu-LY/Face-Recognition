@@ -36,9 +36,10 @@ def crop_face(face, location, img_size):
     Crop face by face location
     face: (H, W, C)
     location: (top, right, bottom, left)
+    img_size: [H, W]
     '''
     face = face[location[0]:location[2], location[3]:location[1]]
-    face = cv2.resize(face, (img_size, img_size))
+    face = cv2.resize(face, img_size)
     return face
 
 
@@ -52,11 +53,11 @@ def get_face_img(path, model='hog'):
     location = fr.face_locations(aligned_face, model=model)
     if len(location) == 0:
         return None
-    aligned_face = crop_face(aligned_face, location[0], 128)
+    aligned_face = crop_face(aligned_face, location[0], (112, 96))
     return aligned_face
 
 
-DATA_ROOT = '/home/yuliu/Dataset/Face'
+DATA_ROOT = '/scratch/generalvision/SlotAttention/Face'
 
 def crop_and_align_all_face():
     # process train data
@@ -206,6 +207,6 @@ def get_embedding(path):
     return face_encodings[0]
 
 if __name__ == '__main__':
-    # crop_and_align_all_face()
-    # generate_data_set()
-    generate_label()
+    crop_and_align_all_face()
+    generate_data_set()
+    # generate_label()
