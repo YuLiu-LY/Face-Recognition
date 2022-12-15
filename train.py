@@ -86,7 +86,11 @@ def main(args):
         log_dir = os.path.join(args.log_path, args.log_name)
         print(log_dir)
         logger.experiment.add_text('hparams', arg_str)
-        callbacks = [LearningRateMonitor("step"), ImageLogCallback(), ModelCheckpoint(monitor=args.monitor, save_top_k=1, save_last=True, mode='max')]
+        callbacks = [
+            LearningRateMonitor("step"), 
+            ImageLogCallback(), 
+            ModelCheckpoint(monitor=args.monitor, save_top_k=1, save_last=True, mode='max')
+            ]
     else:
         logger = False
         callbacks = []

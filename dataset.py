@@ -35,7 +35,7 @@ class FaceDataset(Dataset):
     def __getitem__(self, index: int):
         out = {}
         img_paths = self.img_files[index]
-        if self.split ==  'train':
+        if self.split ==  'train' or self.split == 'train_val':
             if len(img_paths) < 2:
                 img1 = Image.open(img_paths[0]).convert("RGB")
                 img_pair= [self.T1(img1), self.T2(img1)]
@@ -61,16 +61,19 @@ class FaceDataset(Dataset):
     def get_files(self):
         with open(f'{self.data_root}/{self.split}.txt', 'r') as f:
             lines = f.read().splitlines()
-            if self.split == 'train':
-                img_dirs = lines
-                self.img_files = [sorted(glob(f'{dir}/*_a.jpg')) for dir in img_dirs]
-            elif self.split == 'val':
-                pairs = [line.split(',') for line in lines]
-                self.img_files = [[pair[0], pair[1]] for pair in pairs]
-                self.labels = [int(pair[2]) for pair in pairs]
-            else:
-                pairs = [line.split(',') for line in lines]
-                self.img_files = [[pair[0], pair[1]] for pair in pairs]
+        if self.split == 'train':
+            img_dirs = lines
+            self.img_files = [sorted(glob(f'{dir}/*_a.jpg')) for dir in img_dirs]
+        elif self.split == 'train_val':
+            img_dirs = lines
+            self.img_files = [sorted(glob(f'{dir}/*_a.jpg')) for dir in img_dirs]
+        elif self.split == 'val':
+            pairs = [line.split(',') for line in lines]
+            self.img_files = [[pair[0], pair[1]] for pair in pairs]
+            self.labels = [int(pair[2]) for pair in pairs]
+        else:
+            pairs = [line.split(',') for line in lines]
+            self.img_files = [[pair[0], pair[1]] for pair in pairs]
 
 
 class FaceDataModule(pl.LightningDataModule):
@@ -82,7 +85,7 @@ class FaceDataModule(pl.LightningDataModule):
         self.batch_size = args.batch_size
         self.num_workers = args.num_workers
 
-        self.train_dataset = FaceDataset(args.data_root, 'train')
+        self.train_dataset = FaceDataset(args.data_root, 'train_val')
         self.val_dataset = FaceDataset(args.data_root, 'val')
         self.test_dataset = FaceDataset(args.data_root, 'val')
 
@@ -119,7 +122,7 @@ if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser()
     args = parser.parse_args()
-    args.data_root = '/scratch/generalvision/SlotAttention/Face'
+    args.data_root = '/home/yuliu/Dataset/Face1'
     args.use_rescale = False
     args.batch_size = 20
     args.num_workers = 0

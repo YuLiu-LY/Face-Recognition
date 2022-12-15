@@ -60,6 +60,7 @@ def check_valid_crop(top, bottom, left, right, H, W):
     right = min(W, right)
     return top, bottom, left, right
 
+
 def crop_face(face, landmarks, img_size):
     '''
     Crop face by face landmarks
@@ -142,24 +143,30 @@ def generate_data_set():
     # generate validation set
     img_dirs = sorted(glob(f'{DATA_ROOT}/training_set/*'))
     img_paths_list = [sorted(glob(f'{img_dir}/*_a.jpg')) for img_dir in img_dirs]
+    # save train_val.txt
+    with open(f'{DATA_ROOT}/train_val.txt', 'w') as f:
+        for i in range(len(img_dirs)):
+            if len(img_paths_list[i]) > 0:
+                f.write(f'{img_dirs[idx]}\n')
     N = 300
     random.seed(0)
-    idx = random.sample(range(len(img_dirs)), N)
-    train_dirs = [img_dirs[i] for i in range(len(img_dirs)) if i not in idx]
+    idx_val = random.sample(range(len(img_dirs)), N)
+    idx_train = [i for i in range(len(img_dirs)) if i not in idx_val]
     # save train.txt
     with open(f'{DATA_ROOT}/train.txt', 'w') as f:
-        for dir in train_dirs:
-            f.write(f'{dir}\n')
+        for idx in idx_train:
+            if len(img_paths_list[idx]) > 0:
+                f.write(f'{img_dirs[idx]}\n')
     # save val.txt
     # generate pairs of same face and different face
     pair_list = []
     label_list = []
     N_pos = 0
-    for i in idx:
+    for i in idx_val:
         img_paths = img_paths_list[i]
         if len(img_paths) == 0:
             print(f'No face in {img_dirs[i]}')
-            idx.pop(idx.index(i))
+            idx_val.pop(idx_val.index(i))
             continue
         if len(img_paths) == 2:
             pair_list.append(img_paths)
@@ -173,21 +180,21 @@ def generate_data_set():
                     label_list.append(1)
                     N_pos += 1
     N_neg = 0
-    T = N_pos // len(idx)
-    for i in idx:
+    T = N_pos // len(idx_val)
+    for i in idx_val:
         img_paths1 = img_paths_list[i]
         path1 = random.choice(img_paths1)
         for _ in range(T):
-            j = random.choice(idx)
+            j = random.choice(idx_val)
             while j == i:
-                j = random.choice(idx)
+                j = random.choice(idx_val)
             img_paths2 = img_paths_list[j]
             path2 = random.choice(img_paths2)
             pair_list.append([path1, path2])
             label_list.append(0)
             N_neg += 1
     for _ in range(N_pos - N_neg):
-        ids = random.sample(idx, 2)
+        ids = random.sample(idx_val, 2)
         img_paths1 = img_paths_list[ids[0]]
         img_paths2 = img_paths_list[ids[1]]
         path1 = random.choice(img_paths1)
@@ -196,10 +203,10 @@ def generate_data_set():
         label_list.append(0)
         N_neg += 1
     # shuffle label and pair
-    idx = list(range(len(label_list)))
-    random.shuffle(idx)
-    label_list = [label_list[i] for i in idx]
-    pair_list = [pair_list[i] for i in idx]
+    ids = list(range(len(label_list)))
+    random.shuffle(ids)
+    label_list = [label_list[i] for i in ids]
+    pair_list = [pair_list[i] for i in ids]
     
     print(f'N_neg: {N_neg}')
     print(f'N_pos: {N_pos}')
