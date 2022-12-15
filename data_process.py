@@ -156,7 +156,7 @@ def generate_data_set():
     with open(f'{DATA_ROOT}/train.txt', 'w') as f:
         for idx in idx_train:
             if len(img_paths_list[idx]) > 0:
-                f.write(f'{img_dirs[idx]}\n')
+                f.write(f'{img_dirs[i]}\n')
     # save val.txt
     # generate pairs of same face and different face
     pair_list = []
