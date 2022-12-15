@@ -280,7 +280,8 @@ def fr_acc():
 if __name__ == '__main__':
     # crop_and_align_all_face()
     # generate_data_set()
-    generate_label()
+    # generate_label()
+    correct_img(f'/scratch/generalvision/SlotAttention/Face/test_pair/7/A.jpg')
     
 
             
