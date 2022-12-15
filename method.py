@@ -135,9 +135,12 @@ class FaceMethod(pl.LightningModule):
             acc = (pred == labels).float().mean()
             accs.append(acc)
         accs = torch.stack(accs, dim=0)
-        logs['avg_acc'] = accs.max()
-        best_threshold = thresholds[accs.argmax()]
+        _, idx = accs.topk(5)
+        best_threshold = thresholds[idx].mean()
         self.threshold = best_threshold
+        pred = dists < self.threshold
+        acc = (pred == labels).float().mean()
+        logs['avg_acc'] = acc
         print(f"Best threshold: {best_threshold.item():.6f}")
         print(f"Best acc for validation: {accs.max().item():.6f}")
 
@@ -210,10 +213,13 @@ class FaceMethod(pl.LightningModule):
                 acc = (pred == labels).float().mean()
                 accs.append(acc)
             accs = torch.stack(accs, dim=0)
-            best_threshold = thresholds[accs.argmax()]
+            _, idx = accs.topk(5)
+            best_threshold = thresholds[idx].mean()
             self.threshold = best_threshold
+            pred = dists < self.threshold
+            acc = (pred == labels).float().mean()
             print(f"Best threshold: {best_threshold.item():.6f}")
-            print(f"Best acc for validation: {accs.max().item():.6f}")
+            print(f"Best acc for validation: {acc.item():.6f}")
 
     def cosine_anneal(self, step, final_step, start_step=0, start_value=1.0, final_value=0.1):
     

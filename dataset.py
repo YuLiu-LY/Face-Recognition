@@ -40,7 +40,7 @@ class FaceDataset(Dataset):
                 img1 = Image.open(img_paths[0]).convert("RGB")
                 img_pair= [self.T1(img1), self.T2(img1)]
             else:
-                random.shuffle(img_paths)
+                img_paths = random.sample(img_paths, 2)
                 img1 = Image.open(img_paths[0]).convert("RGB")
                 img2 = Image.open(img_paths[1]).convert("RGB")
                 img_pair = [self.T1(img1), self.T2(img2)]
