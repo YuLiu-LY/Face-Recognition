@@ -91,8 +91,9 @@ class FaceDataModule(pl.LightningDataModule):
         super().__init__()
         self.batch_size = args.batch_size
         self.num_workers = args.num_workers
+        training_set = args.training_set
 
-        self.train_dataset = FaceDataset(args.data_root, 'train', args.use_aug)
+        self.train_dataset = FaceDataset(args.data_root, training_set, args.use_aug)
         self.val_dataset = FaceDataset(args.data_root, 'val')
         if args.action == 'test':
             self.test_dataset = FaceDataset(args.data_root, 'test')

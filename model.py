@@ -134,13 +134,14 @@ class ConvBlock(nn.Module):
             relu = nn.ReLU()
         elif relu_type == 'prelu':
             relu = nn.PReLU(out_ch)
-        norm = nn.BatchNorm2d(out_ch) if use_BN else nn.Identity()
+        norm1 = nn.BatchNorm2d(out_ch) if use_BN else nn.Identity()
+        norm2 = nn.BatchNorm2d(out_ch) if use_BN else nn.Identity()
         self.block = nn.Sequential(
             nn.Conv2d(in_ch, out_ch, 3, 1, 1),
-            norm,
+            norm1,
             relu,
             nn.Conv2d(out_ch, out_ch, 3, 1, 1),
-            norm,
+            norm2,
             relu,
         )
     

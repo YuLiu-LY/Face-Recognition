@@ -61,6 +61,7 @@ parser.add_argument('--triplet_weight', type=float, default=0)
 parser.add_argument('--predict_mode', type=str, default='cosine', help='cosine, euclidean')
 
 parser.add_argument('--action', type=str, default='train', help='val, test')
+parser.add_argument('--training_set', type=str, default='train', help='train_val')
 
 
 def main(args):
