@@ -46,7 +46,6 @@ parser.add_argument('--lr', type=float, default=0.1)
 parser.add_argument('--lr_mode', type=str, default='cosine', help='step, cosine')
 parser.add_argument('--max_steps', type=int, default=35000)
 
-parser.add_argument('--m_warmup_steps', type=int, default=0)
 parser.add_argument('--margin', type=float, default=0)
 parser.add_argument('--scale', type=int, default=64)
 parser.add_argument('--learn_scale', default=True, action='store_false')
@@ -57,11 +56,11 @@ parser.add_argument('--N_layer', type=int, default=64)
 parser.add_argument('--projection_dim', type=int, default=256)
 parser.add_argument('--relu_type', type=str, default='relu', help='relu, prelu')
 
-parser.add_argument('--test', action='store_true')
 parser.add_argument('--contras_weight', type=float, default=1)
 parser.add_argument('--triplet_weight', type=float, default=0)
 parser.add_argument('--predict_mode', type=str, default='cosine', help='cosine, euclidean')
 
+parser.add_argument('--action', type=str, default='train', help='val, test')
 
 
 def main(args):
@@ -74,7 +73,7 @@ def main(args):
     model = FaceModel(args)
     if args.gpus > 1:
         model = SyncBatchNorm.convert_sync_batchnorm(model)
-    if args.test:
+    if args.action != 'train':
         ckpt = state_dict_ckpt(args.test_ckpt_path)
         model.load_state_dict(ckpt)
     method = FaceMethod(model=model, datamodule=datamodule, args=args)
@@ -110,7 +109,7 @@ def main(args):
         check_val_every_n_epoch=args.check_val_every_n_epoch,
         gradient_clip_val=args.grad_clip,
     )
-    if args.test:
+    if args.action != 'train':
         trainer.test(method)
         # images = method.sample_images()
         # from torchvision import transforms

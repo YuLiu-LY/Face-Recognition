@@ -12,7 +12,7 @@ class FaceDataset(Dataset):
         self,
         data_root: str,
         split:str,
-        use_aug=True,
+        use_aug=False,
     ):
         super().__init__()
         self.data_root = data_root
@@ -92,9 +92,12 @@ class FaceDataModule(pl.LightningDataModule):
         self.batch_size = args.batch_size
         self.num_workers = args.num_workers
 
-        self.train_dataset = FaceDataset(args.data_root, 'train')
+        self.train_dataset = FaceDataset(args.data_root, 'train', args.use_aug)
         self.val_dataset = FaceDataset(args.data_root, 'val')
-        self.test_dataset = FaceDataset(args.data_root, 'val')
+        if args.action == 'test':
+            self.test_dataset = FaceDataset(args.data_root, 'test')
+        else:
+            self.test_dataset = FaceDataset(args.data_root, 'val')
 
     def train_dataloader(self):
         return DataLoader(
@@ -133,6 +136,7 @@ if __name__ == '__main__':
     args.use_rescale = False
     args.batch_size = 20
     args.num_workers = 0
+    args.action = 'val'
 
     datamodule = FaceDataModule(args)
     dl = datamodule.val_dataloader()

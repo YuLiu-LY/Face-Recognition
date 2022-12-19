@@ -22,16 +22,12 @@ class FaceMethod(pl.LightningModule):
         self.sample_num = 0
         self.empty_cache = True
         self.threshold = -0.2
-        self.margin = 0
+        self.margin = args.margin
 
     def forward(self, input, **kwargs):
         return self.model(input, **kwargs)
 
     def training_step(self, batch, batch_idx):
-        if self.global_step >= self.args.m_warmup_steps:
-            self.margin = self.args.margin
-        else:
-            self.margin = self.global_step / self.args.m_warmup_steps * self.args.margin
         batch_img = batch['image']
         loss = self.model.loss(batch_img, margin=self.margin)
         logs = {'loss': loss}
@@ -110,40 +106,20 @@ class FaceMethod(pl.LightningModule):
             self.empty_cache = False
 
         batch_img = batch['image']
-        label = batch['label'] # [B]
         dist = self.model.predict(batch_img)
        
-        return dist, label
+        return dist
 
     def test_epoch_end(self, outputs):
         self.empty_cache = True
-        if self.args.predict_mode == 'cosine':
-            thresholds = torch.linspace(-1, 0, 500) 
-        elif self.args.predict_mode == 'euclidean':
-            thresholds = torch.linspace(0, 1.5, 500)
-        logs = {}
-        dists = []
-        labels = []
-        for dist, label in outputs:
-            dists.append(dist)
-            labels.append(label)
-        dists = torch.cat(dists, dim=0)
-        labels = torch.cat(labels, dim=0)
-        accs = []
-        for threshold in thresholds:
-            pred = dists < threshold
-            acc = (pred == labels).float().mean()
-            accs.append(acc)
-        accs = torch.stack(accs, dim=0)
-        _, idx = accs.topk(5)
-        best_threshold = thresholds[idx].mean()
-        self.threshold = best_threshold
-        pred = dists < self.threshold
-        acc = (pred == labels).float().mean()
-        logs['avg_acc'] = acc
-        print(f"Best threshold: {best_threshold.item():.6f}")
-        print(f"Best acc for validation: {accs.max().item():.6f}")
-
+        self.find_best_threshold()
+        # save pred as txt
+        if self.args.action == 'test':
+            dists = torch.cat(outputs, dim=0)
+            pred = (dists < self.threshold).long()
+            with open('test_pred.txt', 'w') as f:
+                for i in range(pred.shape[0]):
+                    f.write(f'{pred[i].item()}\n')
 
     def configure_optimizers(self):
         params = self.model.parameters()
@@ -153,13 +129,6 @@ class FaceMethod(pl.LightningModule):
         decay2 = 24000
         decay3 = 28000
         
-        # def lr_scheduler_main(step: int):
-        #     if step < warmup_steps:
-        #         factor = step / warmup_steps
-        #     else:
-        #         factor = 1
-        #     factor *= 0.5 ** (step / decay_steps)
-        #     return factor
         if self.args.lr_mode == 'cosine':
             def lr_scheduler_main(step: int):
                 factor = self.cosine_anneal(step, decay3, 0, 1, 0.001)
@@ -188,9 +157,9 @@ class FaceMethod(pl.LightningModule):
         print('Predict mode: ', self.args.predict_mode)
         self.model.to(self.device)
         if self.args.predict_mode == 'cosine':
-            thresholds = torch.linspace(-1, 1, 400) 
+            thresholds = torch.linspace(-1, 0, 500) 
         elif self.args.predict_mode == 'euclidean':
-            thresholds = torch.linspace(0, 2, 400)
+            thresholds = torch.linspace(0, 1.5, 500)
         self.model.eval()
         dataloader = self.datamodule.val_dataloader()
         with torch.no_grad():
