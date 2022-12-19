@@ -44,23 +44,24 @@ parser.add_argument('--load_from_ckpt', default=False, action='store_true')
 
 parser.add_argument('--lr', type=float, default=0.1)
 parser.add_argument('--lr_mode', type=str, default='cosine', help='step, cosine')
-parser.add_argument('--warmup_rate', type=float, default=0.1)
-parser.add_argument('--decay_rate', type=float, default=0.4)
 parser.add_argument('--max_steps', type=int, default=35000)
 
-parser.add_argument('--m_warmup_steps', type=int, default=15000)
-parser.add_argument('--margin', type=float, default=0.35)
+parser.add_argument('--m_warmup_steps', type=int, default=0)
+parser.add_argument('--margin', type=float, default=0)
 parser.add_argument('--scale', type=int, default=64)
-parser.add_argument('--learn_scale', default=False, action='store_true')
+parser.add_argument('--learn_scale', default=True, action='store_false')
 
+parser.add_argument('--use_BN', default=True, action='store_false')
+parser.add_argument('--use_aug', default=True, action='store_false')
 parser.add_argument('--N_layer', type=int, default=64)
-parser.add_argument('--projection_dim', type=int, default=512)
+parser.add_argument('--projection_dim', type=int, default=256)
 parser.add_argument('--relu_type', type=str, default='relu', help='relu, prelu')
 
 parser.add_argument('--test', action='store_true')
 parser.add_argument('--contras_weight', type=float, default=1)
 parser.add_argument('--triplet_weight', type=float, default=0)
 parser.add_argument('--predict_mode', type=str, default='cosine', help='cosine, euclidean')
+
 
 
 def main(args):

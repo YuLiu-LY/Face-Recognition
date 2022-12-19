@@ -149,8 +149,6 @@ class FaceMethod(pl.LightningModule):
         params = self.model.parameters()
         optimizer = optim.SGD(params, lr=self.args.lr, weight_decay=5e-4)
 
-        warmup_steps = self.args.warmup_rate * self.args.max_steps
-        decay_steps = self.args.decay_rate * self.args.max_steps
         decay1 = 16000
         decay2 = 24000
         decay3 = 28000

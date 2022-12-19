@@ -8,7 +8,7 @@ class FaceModel(nn.Module):
     def __init__(self, args):
         super().__init__()
         self.args = args
-        self.backbone = FaceNet(args.N_layer, args.projection_dim, args.relu_type)
+        self.backbone = FaceNet(args.N_layer, args.projection_dim, args.relu_type, args.use_BN)
 
         self.contras_weight = args.contras_weight
         self.triplet_weight = args.triplet_weight
@@ -74,7 +74,7 @@ class FaceModel(nn.Module):
 
 
 class FaceNet(nn.Module):
-    def __init__(self, N_layer=64, fc_dim=512, relu_type='relu'):
+    def __init__(self, N_layer=64, fc_dim=512, relu_type='relu', use_BN=True):
         super().__init__()
         if N_layer == 36:
             # 36-Layer CNN
@@ -86,8 +86,8 @@ class FaceNet(nn.Module):
             raise ValueError('N_layer must be 36 or 64')
         blocks = [
             nn.Sequential(
-                DownBlock(3, 64, relu_type),
-                *[ConvBlock(64, 64, relu_type) for _ in range(N_blocks[0])]
+                DownBlock(3, 64, relu_type, use_BN),
+                *[ConvBlock(64, 64, relu_type, use_BN) for _ in range(N_blocks[0])]
             )
         ]
         ch_in = 64
@@ -95,8 +95,8 @@ class FaceNet(nn.Module):
             n = N_blocks[i]
             ch_out = ch_in * 2
             blocks.append(nn.Sequential(
-                DownBlock(ch_in, ch_out, relu_type),
-                *[ConvBlock(ch_out, ch_out, relu_type) for _ in range(n)]
+                DownBlock(ch_in, ch_out, relu_type, use_BN),
+                *[ConvBlock(ch_out, ch_out, relu_type, use_BN) for _ in range(n)]
             ))
             ch_in = ch_out
         self.conv_blocks = nn.Sequential(*blocks)
@@ -110,15 +110,16 @@ class FaceNet(nn.Module):
 
 
 class DownBlock(nn.Module):
-    def __init__(self, in_ch, out_ch, relu_type='relu'):
+    def __init__(self, in_ch, out_ch, relu_type='relu', use_BN=True):
         super().__init__()
         if relu_type == 'relu':
             relu = nn.ReLU()
         elif relu_type == 'prelu':
             relu = nn.PReLU(out_ch)
+        norm = nn.BatchNorm2d(out_ch) if use_BN else nn.Identity()
         self.block = nn.Sequential(
             nn.Conv2d(in_ch, out_ch, 3, 2, 1),
-            nn.BatchNorm2d(out_ch),
+            norm,
             relu,
         )
     
@@ -127,18 +128,19 @@ class DownBlock(nn.Module):
 
 
 class ConvBlock(nn.Module):
-    def __init__(self, in_ch, out_ch, relu_type='relu'):
+    def __init__(self, in_ch, out_ch, relu_type='relu', use_BN=True):
         super().__init__()
         if relu_type == 'relu':
             relu = nn.ReLU()
         elif relu_type == 'prelu':
             relu = nn.PReLU(out_ch)
+        norm = nn.BatchNorm2d(out_ch) if use_BN else nn.Identity()
         self.block = nn.Sequential(
             nn.Conv2d(in_ch, out_ch, 3, 1, 1),
-            nn.BatchNorm2d(out_ch),
+            norm,
             relu,
             nn.Conv2d(out_ch, out_ch, 3, 1, 1),
-            nn.BatchNorm2d(out_ch),
+            norm,
             relu,
         )
     

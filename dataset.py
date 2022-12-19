@@ -12,6 +12,7 @@ class FaceDataset(Dataset):
         self,
         data_root: str,
         split:str,
+        use_aug=True,
     ):
         super().__init__()
         self.data_root = data_root
@@ -23,11 +24,17 @@ class FaceDataset(Dataset):
             transforms.ToTensor(),
             transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5]),
         ])
-        self.T2 = transforms.Compose([
-            transforms.RandomHorizontalFlip(0.5),
-            transforms.RandomGrayscale(p=0.2),
-            transforms.RandomApply([transforms.ColorJitter(0.3, 0.15, 0.1, 0.1)], p=0.5),
-            transforms.RandomApply([transforms.GaussianBlur(31, 2)], p=0.5),
+        if use_aug:
+            self.T2 = transforms.Compose([
+                transforms.RandomHorizontalFlip(0.5),
+                transforms.RandomGrayscale(p=0.2),
+                transforms.RandomApply([transforms.ColorJitter(0.3, 0.15, 0.1, 0.1)], p=0.5),
+                transforms.RandomApply([transforms.GaussianBlur(31, 2)], p=0.5),
+                transforms.ToTensor(),
+                transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5]),
+            ])
+        else:
+            self.T2 = transforms.Compose([
             transforms.ToTensor(),
             transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5]),
         ])
@@ -85,7 +92,7 @@ class FaceDataModule(pl.LightningDataModule):
         self.batch_size = args.batch_size
         self.num_workers = args.num_workers
 
-        self.train_dataset = FaceDataset(args.data_root, 'train_val')
+        self.train_dataset = FaceDataset(args.data_root, 'train')
         self.val_dataset = FaceDataset(args.data_root, 'val')
         self.test_dataset = FaceDataset(args.data_root, 'val')
 
