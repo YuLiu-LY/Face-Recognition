@@ -9,4 +9,5 @@ python main.py \
 --device '0' \
 --action 'train' \
 --data_root '/home/yuliu/Dataset/Face1' \
+--log_parh '/home/yuliu/Projects/Face/results/' \
 --is_logger_enabled \
