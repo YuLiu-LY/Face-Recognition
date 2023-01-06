@@ -65,7 +65,7 @@ class FaceModel(nn.Module):
         # x: [B, 2, C, H, W]
         z1, z2 = self.forward(x)
         if self.predict_mode == 'cosine':
-            dist = - F.cosine_similarity(z1, z2)
+            dist = 1 - F.cosine_similarity(z1, z2)
         elif self.predict_mode == 'euclidean':
             z1 = F.normalize(z1, dim=1)
             z2 = F.normalize(z2, dim=1)

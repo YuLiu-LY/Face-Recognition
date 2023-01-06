@@ -21,7 +21,7 @@ class FaceMethod(pl.LightningModule):
         self.val_iter = iter(self.datamodule.val_dataloader())
         self.sample_num = 0
         self.empty_cache = True
-        self.threshold = -0.2
+        self.threshold = args.threshold
         self.margin = args.margin
 
     def forward(self, input, **kwargs):
@@ -157,9 +157,9 @@ class FaceMethod(pl.LightningModule):
         print('Predict mode: ', self.args.predict_mode)
         self.model.to(self.device)
         if self.args.predict_mode == 'cosine':
-            thresholds = torch.linspace(-1, 0, 500) 
+            thresholds = torch.linspace(0, 1, 500) 
         elif self.args.predict_mode == 'euclidean':
-            thresholds = torch.linspace(0, 1.5, 500)
+            thresholds = torch.linspace(0, 1, 500)
         self.model.eval()
         dataloader = self.datamodule.val_dataloader()
         with torch.no_grad():
@@ -180,14 +180,15 @@ class FaceMethod(pl.LightningModule):
                 acc = (pred == labels).float().mean()
                 accs.append(acc)
             accs = torch.stack(accs, dim=0)
-            _, idx = accs.topk(5)
-            best_threshold = thresholds[idx].mean()
+            best_threshold = thresholds[accs.argmax()].mean()
             # best_threshold = torch.Tensor([-0.42]).to(self.device)
-            self.threshold = best_threshold
+            if not self.args.fix_threshold:
+                self.threshold = best_threshold
             pred = dists < self.threshold
             acc = (pred == labels).float().mean()
-            print(f"Best threshold: {best_threshold.item():.6f}")
-            print(f"Best acc for validation: {acc.item():.6f}")
+            print(f"Val_Acc for best threshold {best_threshold.item():.6f}: {accs.max().item():.6f}")
+            print(f"Val_Acc for threshold {self.threshold:.6f}: {acc.item():.6f}")
+            
 
     def cosine_anneal(self, step, final_step, start_step=0, start_value=1.0, final_value=0.1):
     

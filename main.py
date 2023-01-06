@@ -53,6 +53,8 @@ parser.add_argument('--learn_scale', default=True, action='store_false')
 
 parser.add_argument('--use_BN', default=True, action='store_false')
 parser.add_argument('--use_aug', default=True, action='store_false')
+parser.add_argument('--fix_threshold', default=False, action='store_true')
+parser.add_argument('--threshold', default=0.45, type=float)
 parser.add_argument('--N_layer', type=int, default=64)
 parser.add_argument('--projection_dim', type=int, default=256)
 parser.add_argument('--relu_type', type=str, default='relu', help='relu, prelu')
