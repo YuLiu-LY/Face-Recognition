@@ -6,3 +6,4 @@ events*
 *.out
 *.sh
 *.ipynb
+*.ckpt
