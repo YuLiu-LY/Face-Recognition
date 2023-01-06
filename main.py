@@ -27,6 +27,7 @@ parser.add_argument('--log_name', default='test')
 parser.add_argument('--log_path', default='/home/yuliu/Projects/Face/results/')
 parser.add_argument('--ckpt_path', default='.ckpt')
 parser.add_argument('--test_ckpt_path', default='ckpt.pt.tar')
+parser.add_argument('--test_result_name', default='test_pred')
 
 parser.add_argument('--monitor', type=str, default='avg_acc', help='avg_acc')
 parser.add_argument('--seed', type=int, default=42)

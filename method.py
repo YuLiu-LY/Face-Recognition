@@ -117,7 +117,7 @@ class FaceMethod(pl.LightningModule):
         if self.args.action == 'test':
             dists = torch.cat(outputs, dim=0)
             pred = (dists < self.threshold).long()
-            with open('test_pred.txt', 'w') as f:
+            with open(f'{self.args.test_result_name}.txt', 'w') as f:
                 for i in range(pred.shape[0]):
                     f.write(f'{pred[i].item()}\n')
 
