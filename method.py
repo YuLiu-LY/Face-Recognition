@@ -182,6 +182,7 @@ class FaceMethod(pl.LightningModule):
             accs = torch.stack(accs, dim=0)
             _, idx = accs.topk(5)
             best_threshold = thresholds[idx].mean()
+            # best_threshold = torch.Tensor([-0.42]).to(self.device)
             self.threshold = best_threshold
             pred = dists < self.threshold
             acc = (pred == labels).float().mean()

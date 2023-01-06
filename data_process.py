@@ -223,72 +223,14 @@ def generate_data_set():
 
 def correct_img(img_path):
     img = get_face_img(img_path, model='cnn', idx=1)
-    img.save(img_path.replace('.jpg', '_a.jpg'))
+    img.save(img_path.replace('.jpg', '_a.jpg'))    
 
-
-def generate_label(threshold=0.5):
-    img_dirs = [f'{DATA_ROOT}/test_pair/{i}' for i in range(600)]
-    img_paths_list = [[f'{dir}/A.jpg', f'{dir}/B.jpg'] for dir in img_dirs]
-    label = []
-    for img_paths in tqdm(img_paths_list):
-        path1 = img_paths[0]
-        path2 = img_paths[1]
-        emb1 = get_embedding(path1)
-        emb2 = get_embedding(path2)
-        dist = np.linalg.norm(emb1 - emb2)
-        if dist < threshold:
-            label.append(1)
-        else:
-            label.append(0)
-    with open(f'{DATA_ROOT}/test_label.txt', 'w') as f:
-        for l in label:
-            f.write(f'{l}\n')
-    
-
-def get_embedding(path):
-    img = fr.load_image_file(path)
-    H, W, _ = img.shape
-    # face_locations = fr.face_locations(img)
-    # if len(face_locations) == 0:
-    #     face_locations = fr.face_locations(img, model='cnn')
-    face_locations = [[0, W, H, 0]]
-    face_encodings = fr.face_encodings(img, face_locations)
-    return face_encodings[0]
-
-
-def fr_acc():
-    with open(f'{DATA_ROOT}/val.txt', 'r') as f:
-        lines = f.read().splitlines()
-        pairs = [line.split(',') for line in lines]
-        img_files = [[pair[0], pair[1]] for pair in pairs]
-        labels = [int(pair[2]) for pair in pairs]
-    labels = np.array(labels)
-    dists = []
-    for img_paths in tqdm(img_files):
-        path1 = img_paths[0]
-        path2 = img_paths[1]
-        emb1 = get_embedding(path1)
-        emb2 = get_embedding(path2)
-        dist = np.linalg.norm(emb1 - emb2)
-        dists.append(dist)
-    dists = np.stack(dists)
-    thresholds = np.arange(0.1, 1, 0.01)
-    accs = []
-    for threshold in thresholds:
-        pred = dists < threshold
-        acc = np.mean(pred == labels) 
-        accs.append(acc)
-    accs = np.stack(accs)
-    best_threshold = thresholds[np.argmax(accs)]
-    print(f'Best threshold: {best_threshold}')
-    print(f'Best accuracy: {np.max(accs)}')
 
 
 if __name__ == '__main__':
-    # crop_and_align_all_face()
-    # generate_data_set()
-    # generate_label()
-    correct_img(f'/scratch/generalvision/SlotAttention/Face/test_pair/7/A.jpg')
+    crop_and_align_all_face()
+    generate_data_set()
+    correct_img(f'{DATA_ROOT}/test_pair/7/A.jpg')
     
 
             
