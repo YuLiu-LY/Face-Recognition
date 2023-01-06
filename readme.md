@@ -30,7 +30,7 @@ To reload checkpoints and only run inference, we provide the following script:
 $ chmod +x test.sh
 $ ./test.sh
 ```
-We provide two checkpoints in ``ckpt`` folder: ``train_val.ckpt`` is trained on the whole dataset, and ``train.ckpt`` is trained on the training dataset. You can change the ``test_ckpt_path`` in ``test.sh`` to reload the checkpoints. We provide all checkpoints at this [link](https://cloud.tsinghua.edu.cn/f/58094c10af68494eadab/?dl=1). You can use ``wget https://cloud.tsinghua.edu.cn/f/58094c10af68494eadab/?dl=1`` to download the checkpoints.
+We provide two checkpoints in ``ckpt`` folder: ``train_val.ckpt`` is trained on the whole dataset, and ``train.ckpt`` is trained on the training dataset. You can change the ``test_ckpt_path`` in ``test.sh`` to reload the checkpoints. We provide all checkpoints at this [link](https://cloud.tsinghua.edu.cn/f/58094c10af68494eadab/?dl=1). 
 We also provide two types of evaluation: ``test`` and ``val``. You can change the ``action`` in ``test.sh`` to choose the evaluation type.
 Remember to change the ``data_root`` to your own path. 
 
